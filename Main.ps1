@@ -5,19 +5,12 @@ Add-Type -AssemblyName System.Text.RegularExpressions
 
 # Charger les fonctions depuis les fichiers
 . ./modules/system.ps1
-. ./modules/hardware.ps1
-. ./modules/network.ps1
-. ./modules/security.ps1
-. ./modules/user.ps1
-. ./modules/performance.ps1
+. ./modules//hardware.ps1
+. ./modules//network.ps1
+. ./modules//security.ps1
+. ./modules//user.ps1
+. ./modules//performance.ps1
 
-# Fonction pour supprimer les accents et convertir en minuscules
-function Remove-AccentsAndLowercase {
-    param ([string]$inputString)
-    $normalizedString = [System.Text.NormalizationForm]::FormD
-    $string = [System.Text.RegularExpressions.Regex]::Replace($inputString.Normalize($normalizedString), '[^\u0000-\u007F]', '')
-    return $string.ToLower()
-}
 
 # Fonction pour créer un bouton
 function New-Button {

@@ -1,56 +1,39 @@
 ﻿
+
+# Fonction pour récupérer le SSID des connexions Wi-Fi
+function Get-WiFiSSID {
+    $wifiSsid = netsh wlan show interfaces | Select-String -Pattern '^\s*SSID\s*:\s*(.+)' | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() }
+    return $wifiSsid
+}
 # Fonction pour récupérer les informations réseau
 function Show-NetworkInfo {
-    # Obtenir les adresses IP
-    $ipAddresses = Get-NetIPAddress | Select-Object -First 1
-    $ipInfo = @{
-        "Adresse IPv4" = $ipAddresses.IPv4Address
-        "Adresse IPv6" = $ipAddresses.IPv6Address
-    }
+    # Obtenir les connexions réseau actives
+    $activeAdapters = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' }
 
-    # Obtenir les serveurs DNS
-    $dnsServers = Get-DnsClientServerAddress
-    $dnsInfo = @{
-        "Serveurs DNS" = ($dnsServers | ForEach-Object { $_.ServerAddresses }) -join ", "
-    }
-
-    # Obtenir les connexions actives
-    $activeConnections = Get-NetTCPConnection | Where-Object { $_.State -eq 'Established' }
-    $connectionInfo = @()
-    foreach ($connection in $activeConnections) {
-        $connectionInfo += @{
-            "Local Address" = $connection.LocalAddress
-            "Remote Address" = $connection.RemoteAddress
-            "State" = $connection.State
-        }
-    }
-
-    # Obtenir le SSID du Wi-Fi
-    $wifiSsid = (Get-NetAdapter | Where-Object {$_.Status -eq 'Up' -and $_.Name -match 'Wi-Fi'}).SSID
-
-    # Obtenir les adresses MAC
-    $macAddresses = Get-NetAdapter | Select-Object -ExpandProperty MacAddress
-
-    # Formater les informations en chaîne de caractères
+    # Initialiser la chaîne de résultat
     $result = "=== Informations réseau ===`n"
-    foreach ($key in $ipInfo.Keys) {
-        $result += "$key : $($ipInfo[$key])`n"
-    }
 
-    foreach ($key in $dnsInfo.Keys) {
-        $result += "$key : $($dnsInfo[$key])`n"
-    }
+    foreach ($adapter in $activeAdapters) {
+        # Obtenir les adresses IPv4 de la connexion active
+        $ipAddress = Get-NetIPAddress -InterfaceIndex $adapter.IfIndex -AddressFamily IPv4 | Select-Object -ExpandProperty IPAddress -First 1
 
-    $result += "=== Connexions actives ===`n"
-    foreach ($connection in $connectionInfo) {
-        foreach ($key in $connection.Keys) {
-            $result += "$key : $($connection[$key])`n"
+        # Obtenir les serveurs DNS de la connexion active (en s'assurant qu'il n'y a pas de chiffres supplémentaires)
+        $dnsServers = Get-DnsClientServerAddress -InterfaceAlias $adapter.Name | Select-Object -ExpandProperty ServerAddresses | Where-Object { $_ -match '^\d+\.\d+\.\d+\.\d+$' }
+
+        # Obtenir la passerelle par défaut de la connexion active
+        $defaultGateway = Get-NetRoute -InterfaceIndex $adapter.IfIndex | Where-Object { $_.DestinationPrefix -eq '0.0.0.0/0' } | Select-Object -ExpandProperty NextHop -First 1
+
+        # Ajouter les informations de la connexion au résultat
+        $result += "=== Connexion $($adapter.Name) ===`n"
+        if ($adapter.Name -like '*Wi-Fi*') {
+            $ssid = Get-WiFiSSID
+            $result += "SSID : $ssid`n"
         }
-        $result += "`n"
+        $result += "Adresse IPv4 : $ipAddress`n"
+        $result += "Serveurs DNS : $($dnsServers -join ', ')`n"
+        $result += "Passerelle par défaut : $defaultGateway`n"
+        $result += "Adresse MAC : $($adapter.MacAddress)`n`n"
     }
 
-    $result += "=== Wi-Fi ===`nSSID : $wifiSsid`n"
-    $result += "=== Adresses MAC ===`n"
-    $result += ($macAddresses -join "`n") + "`n"
     return $result
 }
