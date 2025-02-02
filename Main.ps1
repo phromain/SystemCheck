@@ -97,14 +97,14 @@ New-Button -content "Système" -row 0 -col 0 -clickAction {
 }
 
 New-Button -content "Matériel" -row 0 -col 1 -clickAction {
-    $window.Height = 800
+    $window.Height = 400
     $infoPanel.Visibility = 'Visible'
     $titleTextBlock.Text = "Matériel"
     $infoTextBlock.Text = Show-HardwareInfo
 }
 
 New-Button -content "Réseau" -row 0 -col 2 -clickAction {
-    $window.Height = 800
+    $window.Height = 400
     $infoPanel.Visibility = 'Visible'
     $titleTextBlock.Text = "Réseau"
     $infoTextBlock.Text = Show-NetworkInfo
@@ -125,7 +125,7 @@ New-Button -content "Utilisateur" -row 1 -col 1 -clickAction {
 }
 
 New-Button -content "Performances" -row 1 -col 2 -clickAction {
-    $window.Height = 800
+    $window.Height = 400
     $infoPanel.Visibility = 'Visible'
     $titleTextBlock.Text = "Performances"
     $infoTextBlock.Text = Show-PerformanceInfo
