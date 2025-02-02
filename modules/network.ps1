@@ -1,11 +1,28 @@
-﻿
+﻿# Fonction pour récupérer les informations réseau
 
-# Fonction pour récupérer le SSID des connexions Wi-Fi
 function Get-WiFiSSID {
     $wifiSsid = netsh wlan show interfaces | Select-String -Pattern '^\s*SSID\s*:\s*(.+)' | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() }
     return $wifiSsid
 }
-# Fonction pour récupérer les informations réseau
+
+function Get-IPv4Address {
+    param ([int]$IfIndex)
+    $ipAddress = Get-NetIPAddress -InterfaceIndex $IfIndex -AddressFamily IPv4 | Select-Object -ExpandProperty IPAddress -First 1
+    return $ipAddress
+}
+
+function Get-DNSServers {
+    param ([string]$InterfaceAlias)
+    $dnsServers = Get-DnsClientServerAddress -InterfaceAlias $InterfaceAlias | Select-Object -ExpandProperty ServerAddresses | Where-Object { $_ -match '^\d+\.\d+\.\d+\.\d+$' }
+    return $dnsServers -join ', '
+}
+
+function Get-DefaultGateway {
+    param ([int]$IfIndex)
+    $defaultGateway = Get-NetRoute -InterfaceIndex $IfIndex | Where-Object { $_.DestinationPrefix -eq '0.0.0.0/0' } | Select-Object -ExpandProperty NextHop -First 1
+    return $defaultGateway
+}
+
 function Show-NetworkInfo {
     # Obtenir les connexions réseau actives
     $activeAdapters = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' }
@@ -14,14 +31,9 @@ function Show-NetworkInfo {
     $result = "=== Informations réseau ===`n"
 
     foreach ($adapter in $activeAdapters) {
-        # Obtenir les adresses IPv4 de la connexion active
-        $ipAddress = Get-NetIPAddress -InterfaceIndex $adapter.IfIndex -AddressFamily IPv4 | Select-Object -ExpandProperty IPAddress -First 1
-
-        # Obtenir les serveurs DNS de la connexion active (en s'assurant qu'il n'y a pas de chiffres supplémentaires)
-        $dnsServers = Get-DnsClientServerAddress -InterfaceAlias $adapter.Name | Select-Object -ExpandProperty ServerAddresses | Where-Object { $_ -match '^\d+\.\d+\.\d+\.\d+$' }
-
-        # Obtenir la passerelle par défaut de la connexion active
-        $defaultGateway = Get-NetRoute -InterfaceIndex $adapter.IfIndex | Where-Object { $_.DestinationPrefix -eq '0.0.0.0/0' } | Select-Object -ExpandProperty NextHop -First 1
+        $ipAddress = Get-IPv4Address -IfIndex $adapter.IfIndex
+        $dnsServers = Get-DNSServers -InterfaceAlias $adapter.Name
+        $defaultGateway = Get-DefaultGateway -IfIndex $adapter.IfIndex
 
         # Ajouter les informations de la connexion au résultat
         $result += "=== Connexion $($adapter.Name) ===`n"
@@ -30,10 +42,13 @@ function Show-NetworkInfo {
             $result += "SSID : $ssid`n"
         }
         $result += "Adresse IPv4 : $ipAddress`n"
-        $result += "Serveurs DNS : $($dnsServers -join ', ')`n"
+        $result += "Serveurs DNS : $dnsServers`n"
         $result += "Passerelle par défaut : $defaultGateway`n"
         $result += "Adresse MAC : $($adapter.MacAddress)`n`n"
     }
 
     return $result
 }
+
+# Exécuter la fonction et afficher les informations réseau
+Show-NetworkInfo
