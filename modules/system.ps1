@@ -13,3 +13,5 @@ function Show-SystemInfo {
     $result += "Dernière mise à jour de Windows : $lastUpdate`n"
     return $result
 }
+# Exécuter la fonction
+Show-SystemInfo
